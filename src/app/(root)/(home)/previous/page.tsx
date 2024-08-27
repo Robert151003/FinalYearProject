@@ -3,7 +3,7 @@ import React from 'react'
 
 const Previous = () => {
   return (
-    <section className='flex size-full flex-full gap-10 text-white'>
+    <section className='flex size-full flex-col flex-full gap-10 text-white'>
       <h1 className='text-3xl font-bold'>
         Previous
       </h1>
