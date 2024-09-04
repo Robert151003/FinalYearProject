@@ -2,6 +2,7 @@
 import React, { ReactNode } from 'react'
 import StreamVideoProvider from '../../../providers/StreamClientProvider'
 import { Metadata } from 'next';
+import { ThemeProvider } from 'next-themes';
 
 export const metadata: Metadata = {
   title: "Yoom",
@@ -14,9 +15,19 @@ export const metadata: Metadata = {
 const RootLayout = ({children}: {children: ReactNode}) => {
   return (
     <main>
+      <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+
         <StreamVideoProvider>
           {children}
         </StreamVideoProvider>
+
+      </ThemeProvider>
+        
     </main>
   )
 }

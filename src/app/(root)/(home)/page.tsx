@@ -1,13 +1,24 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import MeetingTypeList from '@/components/MeetingTypeList';
-import React from 'react'
 
 const Home = () => {
 
-  const now = new Date();
-  const time = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
-  const date = (new Intl.DateTimeFormat('en-US', {dateStyle:'full'})).format(now);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Update time every second
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
 
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Format time & date
+  const time = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const date = new Intl.DateTimeFormat('en-US', { dateStyle: 'full' }).format(currentTime);
 
   return (
     <section className='flex size-full flex-col gap-10 text-white'>
@@ -25,10 +36,9 @@ const Home = () => {
         </div>
       </div>
 
-      <MeetingTypeList/>
-      
+      <MeetingTypeList />
     </section>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;

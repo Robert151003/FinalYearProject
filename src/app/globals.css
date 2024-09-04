@@ -8,6 +8,10 @@
   box-sizing: border-box;
 }
 
+.cl-providerIcon__github{
+  filter: invert(1);
+}
+
 /* ======== stream css overrides ======== */
 .str-video__call-stats {
   max-width: 500px;
