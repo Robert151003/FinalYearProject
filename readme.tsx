@@ -1,4 +1,7 @@
 {/*
+    Building the app - https://www.youtube.com/watch?v=R8CIO1DZ2b8&sttick=0
+    Implementing sign language detection into the app using tensorflow.js - https://www.youtube.com/watch?v=ZTSRZt04JkY
+
     This is the readme - only for me view - must delete before submission
 
     I use clerk to authorise a login:
@@ -27,16 +30,16 @@
     Stream client provider is used to deal with all of the calling functionality:
 
         Individual Processing for Each Participant
-            In this approach, each participant's video feed is processed individually on their own device or through a WebSocket connection to a server.
 
-            Advantages:
-            Privacy: Each participant's video is processed locally or in a secure environment, minimizing the risk of exposure.
-            Scalability: No single point of failure; each participant's processing is independent.
-            Real-Time Processing: Local processing can reduce latency and improve response times.
-            Disadvantages:
-            Performance: Requires significant resources on each participant's device, which might not be feasible for lower-end hardware.
-            Complexity: Each participant needs to have the necessary software or library to process the video, which can complicate deployment.
-            Bandwidth: May increase bandwidth usage if video frames are sent to a server for processing.
+        In order to implement the sign language detection i have tried multiple different ways:
+            Websockets to scan and edit images then pass them back
+            Replacing the video component in videopreview with my own
+            Using a python script to scan the video
+            Using python to create a virtual camera
+            Using python to host the users feed to a localhost page and getting that users video feed from there
+
+            
+            
 
 
 */}
