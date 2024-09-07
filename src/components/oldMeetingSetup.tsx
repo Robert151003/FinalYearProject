@@ -96,7 +96,7 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
         </label>
         <DeviceSettings />
       </div>
-      <p>Hands detected: {handCount}</p> // Display the hand count
+      <p>Hands detected: {handCount}</p>
       <Button className='rounded-md bg-green-500 px-4 py-2.5' onClick={() => {
         call.join();
         setIsSetupComplete(true);
