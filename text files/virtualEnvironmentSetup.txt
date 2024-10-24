@@ -1,0 +1,7 @@
+to make a new virtual environment run 'python -m venv .venv'
+run 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser'
+setup by running '.\.venv\Scripts\activate' in console
+close by running 'deactivate'
+
+comments in this video help
+https://www.youtube.com/watch?v=GZbeL5AcTgw

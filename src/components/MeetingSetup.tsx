@@ -1,22 +1,29 @@
 'use client';
 
 import * as tf from '@tensorflow/tfjs';
-import { useClerk } from '@clerk/nextjs';
 import { DeviceSettings, useCall, VideoPreview } from '@stream-io/video-react-sdk'
 import React, { useEffect, useState } from 'react';
 import { Button } from './ui/button';
-import * as handpose from '@tensorflow-models/handpose';
+
+
 
 const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: boolean) => void }) => {
+  //#region Variable Definition
   const [isMicCamToggledOn, setIsMicCamToggledOn] = useState(false);
-  const [handCount, setHandCount] = useState(0); // Add a state to store the hand count
-
+  const [detectedLetter, setDetectedLetter] = useState<string>('');
+  const [model, setModel] = useState<tf.LayersModel | null>(null);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const call = useCall();
+  const letterMapping: { [key: number]: string } = {
+    0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8: 'I', 9: 'J',
+    10: 'K', 11: 'L', 12: 'M', 13: 'N', 14: 'O', 15: 'P', 16: 'Q', 17: 'R', 18: 'S', 19: 'T',
+    20: 'U', 21: 'V', 22: 'W', 23: 'X', 24: 'Y', 25: 'Z'
+  };
+  //#endregion
 
-  if (!call) {
-    throw new Error('Use call must be used within stream call component');
-  }
+  if (!call) throw new Error('Use call must be used within stream call component');
 
+  //#region - Camera/Mic Toggle
   useEffect(() => {
     if (isMicCamToggledOn) {
       call?.camera.disable();
@@ -26,59 +33,107 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
       call?.microphone.enable();
     }
   }, [isMicCamToggledOn, call?.camera, call?.microphone]);
+  //#endregion
+
+  //#region - Model Loader
+  useEffect(() => {
+    const loadModel = async () => {
+      console.log("model loading");
+      try {
+        // Load the model
+        const model = await tf.loadLayersModel('/modelFiles/hand-gesture-model.json');
+        console.log("model loaded");
+        console.log(model.inputs);  
+        console.log(model.summary());  
+
+        // Find input layers
+        if (!model.inputs.length) {
+          console.log("No input layers found, creating a new model.");
+          const input = tf.input({shape: [224, 224, 3]});
+          const flatten = tf.layers.flatten().apply(input);
+          const dense1 = tf.layers.dense({units: 128, activation: 'relu'}).apply(flatten);
+          const output = tf.layers.dense({units: 26, activation: 'softmax'}).apply(dense1) as tf.SymbolicTensor;
+          
+          const newModel = tf.model({inputs: input, outputs: output});
+          setModel(newModel);
+        } else {
+          setModel(model);
+        }
+        
+        console.log('Model loaded successfully');
+      } catch (error) {
+        console.error('Error loading custom model:', error);
+      }
+    };
+
+    loadModel();
+  }, []);
+  //#endregion
+
+  //#region - Get Video Element
+  const checkVideoElement = () => {
+    const videoElement = document.querySelector('video');
+    if (videoElement) {
+      setIsVideoReady(true);
+    }
+  };
 
   useEffect(() => {
-    // Load the handpose model
-    handpose.load().then((handposeModel) => {
-      // Get the video element from the VideoPreview component
-      const videoElement = document.querySelector('video');
-      console.log('Video element found:', videoElement);
-
-      if (!videoElement) {
-        console.error('No video element found');
-      } else {
-        // Set up the video element for hand detection
-        const detectHands = (videoElement: HTMLVideoElement, handposeModel: handpose.HandPose) => {
-          // Get the video frame
-          const videoFrame = tf.browser.fromPixels(videoElement);
-          console.log('Video frame shape:', videoFrame.shape);
-
-          // Check if the video frame is valid
-          if (!videoFrame || videoFrame.shape.length !== 3) {
-            console.error('Invalid video frame');
-            return;
-          }
-
-          // Run hand detection
-          handposeModel.estimateHands(videoFrame).then((predictions) => {
-            console.log('Predictions:', predictions);
-
-            // Count the number of hands detected
-            let handCount = 0;
-            console.log('prediciton number: ' + predictions.length)
-            predictions.forEach((prediction) => {
-              if (prediction.handInViewConfidence > 0.5) { // adjust the confidence threshold as needed
-                handCount++;
-              }
-            });
-            setHandCount(handCount);
-
-            console.log(`Hands detected: ${handCount}`);
-          }).catch((error) => {
-            console.error('Error detecting hands:', error);
-          });
-        };
-
-        // Call the detectHands function every 100ms
-        setInterval(() => {
-          detectHands(videoElement, handposeModel);
-        }, 100);
-      }
-    }).catch((error) => {
-      console.error('Error loading handpose model:', error);
-    });
+    const intervalId = setInterval(checkVideoElement, 100);
+    return () => clearInterval(intervalId);
   }, []);
+  //#endregion
 
+  //#region - Run the model
+  useEffect(() => {
+    if (!model || !isVideoReady) return;
+
+    const videoElement = document.querySelector('video');
+    console.log('Video element found:', videoElement);
+
+    if (!videoElement) {console.error('No video element found'); return;} // Exit early
+    
+    // Begin running the model
+    const detectGesture = async (videoElement: HTMLVideoElement) => {
+      const videoFrame = tf.browser.fromPixels(videoElement);
+      console.log('Video frame shape:', videoFrame.shape);
+
+      if (!videoFrame || videoFrame.shape.length !== 3) {console.error('Invalid video frame'); return;}
+
+      // Preprocess the frame
+      const processedFrame = tf.tidy(() => {
+        const resized = tf.image.resizeBilinear(videoFrame, [32, 32]);
+        const normalized = resized.div(255.0);
+        return normalized.expandDims(0);
+      });
+
+      // Run inference
+      const predictions = model.predict(processedFrame) as tf.Tensor;
+      const result = await predictions.argMax(1).data();
+      console.log('Predictions:', result);
+
+      // Process the result
+      const detectedIndex = result[0];
+      const detectedLetter = letterMapping[detectedIndex];
+      setDetectedLetter(detectedLetter);
+
+      console.log(`Detected letter: ${detectedLetter}`);
+
+      // Clean up
+      tf.dispose([videoFrame, processedFrame, predictions]);
+    };
+
+    // Call the detectGesture function every 100ms
+    const intervalId = setInterval(() => {
+      detectGesture(videoElement);
+    }, 100);
+
+    // Clean up function
+    return () => clearInterval(intervalId);
+  }, [model, isVideoReady]);
+  //#endregion
+
+  //#region - HTML
   return (
     <div className='flex h-screen w-full flex-col items-center justify-center gap-3 text-white'>
       <h1 className='text-2xl font-bold'>
@@ -96,7 +151,7 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
         </label>
         <DeviceSettings />
       </div>
-      <p>Hands detected: {handCount}</p>
+      <p>Detected letter: {detectedLetter}</p>
       <Button className='rounded-md bg-green-500 px-4 py-2.5' onClick={() => {
         call.join();
         setIsSetupComplete(true);
@@ -105,6 +160,7 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
       </Button>
     </div>
   );
+  //#endregion
 };
 
 export default MeetingSetup;

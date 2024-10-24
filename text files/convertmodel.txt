@@ -1,0 +1,2 @@
+cd /mnt/c/Users/rober/Documents/GitHub/SpaceEscape/FinalYearProject/public/model
+tensorflowjs_converter --input_format keras /path/to/your/model.h5 /path/to/output/directory
