@@ -9,6 +9,8 @@ import 'react-datepicker/dist/react-datepicker.css'
 
 import { Toaster } from "@/components/ui/toaster";
 
+import { SpeedInsights } from "@vercel/speed-insights/next"
+
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -45,6 +47,7 @@ export default function RootLayout({
         <body className={`${inter.className} bg-dark-2`}>
           {children}
           <Toaster />
+          <SpeedInsights />
         </body>
       </ClerkProvider>     
     </html>
