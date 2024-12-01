@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils';
-import {  CallControls, CallingState, CallParticipantsList, CallStatsButton, DropDownSelect, PaginatedGridLayout, SpeakerLayout, useCall, useCallStateHooks } from '@stream-io/video-react-sdk';
-import React, { useEffect, useRef, useState } from 'react'
-import io from 'socket.io-client';
-import {Socket} from 'socket.io-client';
+import {  CallControls, CallingState, CallParticipantsList, CallStatsButton, PaginatedGridLayout, SpeakerLayout, useCall, useCallStateHooks } from '@stream-io/video-react-sdk';
+import React, { useEffect, useState } from 'react'
+import speechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
 import {
   DropdownMenu,
@@ -16,7 +15,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import EndCallButton from './EndCallButton';
 import { useUser } from '@clerk/nextjs';
 import * as tf from '@tensorflow/tfjs';
-import { Console } from 'console';
 
 
 type CallLayoutType = 'grid' | 'speaker-left' | 'speaker-right';
@@ -31,34 +29,29 @@ const MeetingRoom = () => {
   const [layout, setLayout] = useState<CallLayoutType>('speaker-left');
   const [showParticipants, setShowParticipants] = useState(false);
 
-  const {useCallCallingState} = useCallStateHooks();
+  const { useCallCallingState } = useCallStateHooks();
   const callingState = useCallCallingState();
-
+  
   const router = useRouter();
 
   const {user} = useUser();
+  const call = useCall();
+  const roomId = call?.id;
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [model, setModel] = useState<tf.LayersModel | null>(null);
   const letterMapping: { [key: number]: string } = {
     0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8: 'I', 9: 'J',
     10: 'K', 11: 'L', 12: 'M', 13: 'N', 14: 'O', 15: 'P', 16: 'Q', 17: 'R', 18: 'S', 19: 'T',
-    20: 'U', 21: 'V', 22: 'W', 23: 'X', 24: 'Y', 25: 'Z'
+    20: 'U', 21: 'V', 22: 'W', 23: 'X', 24: 'Y', 25: 'Z', 26: 'nothing'
   };
-  const [detectedLetter, setDetectedLetter] = useState<string>('');
+  var SLcaption = '';
+  var SPcaption = '';
+  var useSignLanguage = false;
 
-  // Websockets
-  const [socket, setSocket] = useState<typeof Socket | null>(null);
+  const { transcript, resetTranscript } = useSpeechRecognition()
 
-
-  const call = useCall();
-  const roomId = call?.id
-  type CaptionData = {
-    roomId: string;
-    userId: string;
-    caption: string;
-  };
-  const socketRef = useRef<typeof Socket | null>(null);
-  const [isSocketConnected, setIsSocketConnected] = useState(false);
+  
+  
 
   //#endregion
 
@@ -67,11 +60,13 @@ const MeetingRoom = () => {
     const loadModel = async () => {
       console.log("model loading");
       try {
+        // Load the model
         const model = await tf.loadLayersModel('/modelFiles/asl-gesture-model.json');
         console.log("model loaded");
         console.log(model.inputs);  
         console.log(model.summary());  
 
+        // Find input layers
         if (!model.inputs.length) {
           console.log("No input layers found, creating a new model.");
           const input = tf.input({shape: [224, 224, 3]});
@@ -96,158 +91,206 @@ const MeetingRoom = () => {
 
   //#endregion
 
-  //#region - Find Video Element and call detectGesture
+  //#region - Find Video Element
   const checkVideoElement = () => {
     const videoElement = document.querySelector(`video[data-user-id="${user?.id}"]`);
     if (videoElement) setIsVideoReady(true);
   };
 
-  // Call Function to Find the Element
+  // Call Function to Find the Video Element
   useEffect(() => {
     const intervalId = setInterval(checkVideoElement, 100);
     return () => clearInterval(intervalId);
   }, []);
-
-  // Establish socket connection on mount
-   useEffect(() => {
-    const intervalId = setInterval(checkVideoElement, 100);
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // Establish socket connection on mount
-  useEffect(() => {
-    // Only create the socket connection if it hasn't been created yet
-    if (!socketRef.current) {
-      console.log('Establishing new socket connection...');
-
-      // Create a new socket connection
-      socketRef.current = io('https://ws-server-fyp.glitch.me'); // WebSocket URL
-
-      // Listen for the 'connect' event
-      socketRef.current.on('connect', () => {
-        console.log('Socket connected');
-        setIsSocketConnected(true);
-      });
-
-      // Emit to join the room
-      socketRef.current.emit('join-room', roomId);
-      console.log(`Socket connection established in room ${roomId}`);
-
-      // Listen for caption events
-      socketRef.current.on('receive-caption', (data: CaptionData) => {
-        console.log('Received caption:', data);
-      });
-
-      // Cleanup on component unmount or when roomId changes
-      return () => {
-        if (socketRef.current) {
-          console.log('Cleaning up socket connection...');
-          socketRef.current.disconnect();
-          console.log('Socket disconnected');
-          setIsSocketConnected(false);
-          socketRef.current = null;
-        }
-      };
-    }
-  }, [roomId]); // The socket is created only when roomId changes
-
-  // Emit caption when detectedLetter changes and socket is connected
-  useEffect(() => {
-    if (socketRef.current && detectedLetter && user) {
-      console.log(`Emitting caption: ${detectedLetter}`);
-      socketRef.current.emit('send-caption', {
-        roomId,
-        userId: user.id,
-        caption: detectedLetter,
-      });
-    }
-  }, [detectedLetter, user, roomId]); // Re-run this effect only when detectedLetter, user, or roomId changes
-
-
-  
-
-  //#region - Use Effects for emitting captions
-  // Emit captions when detectedLetter changes
-  /*useEffect(() => {
-    if (socket && user && detectedLetter) {
-      // Emit caption data when detectedLetter changes
-      socket.emit('send-caption', {
-        roomId,
-        userId: user.id,
-        caption: detectedLetter,
-      });
-      console.log(`Emitting caption: ${detectedLetter}`);
-    }
-  }, [detectedLetter, socket, user, roomId]); // Emit caption when detectedLetter changes*/
-
-  // Emit captions every 1000ms
-  /*useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (socket && user && detectedLetter) {
-        // Emit caption every 1 second, even if detectedLetter hasn't changed
-        socket.emit('send-caption', {
-          roomId,
-          userId: user.id,
-          caption: detectedLetter,
-        });
-        console.log(`Emitting caption (interval): ${detectedLetter}`);
-      }
-    }, 1000); // Emit every 1000ms (1 second)
-  
-    return () => {
-      clearInterval(intervalId); // Clean up interval on unmount
-    };
-  }, [detectedLetter, socket, user, roomId]); // Dependencies for the interval effect*/
   //#endregion
 
+  //#region - Websockets, Captions & AI Model
 
-  // Once Found
+  //#region - Captions 
   useEffect(() => {
+    let previousParticipants = call?.state.participants;
+  
+    const intervalId = setInterval(() => {
+      const currentParticipants = call?.state.participants;
+  
+      // Compare participants with previous 
+      if (JSON.stringify(currentParticipants) !== JSON.stringify(previousParticipants)) {
+        console.log('Participants have changed:', currentParticipants);
+        
+        // If participants have changed, remove all captions
+        const captionElems = document.querySelectorAll('[id*="caption-"]');
+        captionElems.forEach((elem) => elem.remove());
 
+        previousParticipants = currentParticipants;
+      }
+    }, 1000);
+  
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [call]); 
+
+  useEffect(() => {
+    
+
+    function setCaption(userId: string, caption: string) {
+      const vidElement = document.querySelector(`video[data-user-id="${userId}"]`) as HTMLVideoElement;
+      if (!vidElement) {
+        console.error(`Video element for user ${userId} not found.`);
+        return;
+      }
+      // Check if a caption box already exists
+      let captionBox = document.getElementById(`caption-${userId}`) as HTMLDivElement | null;
+      if (!captionBox) {
+        captionBox = document.createElement('div');
+        captionBox.id = `caption-${userId}`; // Set the unique id for the caption box
+        captionBox.classList.add(
+          'caption-box',
+          'absolute',
+          'bottom-2',
+          'left-1/2',
+          'transform',
+          '-translate-x-1/2',
+          'bg-black',
+          'bg-opacity-70',
+          'text-white',
+          'text-sm',
+          'px-3',
+          'py-1',
+          'rounded'
+        );
+        vidElement.parentElement?.appendChild(captionBox);
+      }
+
+      // Update the text content of the caption box
+      captionBox.textContent = caption;
+    }
+    //#endregion
+
+    //#region - Websockets
+    var connected = false;
+    const address = 'wss://ws-server-fyp.glitch.me';
+    const ws = new WebSocket(address);
+    if(!connected){
+      ws.onopen = function() {
+        connected = true;
+        ws.send(JSON.stringify({ type: 'join', room: roomId, user: user?.id }));
+      };
+      
+      ws.onmessage = function(event: MessageEvent) {
+        
+        const data = JSON.parse(event.data);
+        /*if(data.sl){
+          console.log('Received Sign Language Message:', event.data);
+        }
+        else{
+          console.log('Received Speech Message:', event.data);
+        }*/
+
+        switch(data.input){
+          case 'message':
+            setCaption(data.user, data.message);
+            break;
+          case 'join':
+            break;
+        }
+      };
+      
+      ws.onerror = function(error: Event) {
+        console.error('WebSocket error:', error);
+      };
+      
+      ws.onclose = function(event: CloseEvent) {
+        console.log('WebSocket is closed now.');
+        connected = false;
+      };
+    
+    }
+    
+    function sendMessage(){      
+      if(useSignLanguage){
+        console.log('Sending SL caption to server:', SLcaption);
+        ws.send(JSON.stringify({ type: 'message', sl: true, message: SLcaption, user: user?.id }));
+      }  
+      else{
+        console.log('Sending Speech caption to server:', SPcaption);
+        ws.send(JSON.stringify({ type: 'message', sl: false, message: SPcaption, user: user?.id }));
+      }
+    }
+    
+
+    //#endregion
+
+    //#region - Run Speech Recognition Model
+    if(!useSignLanguage){
+      if(transcript.length < 10){
+        speechRecognition.startListening();
+        console.log('Listening...');
+      }
+      else{
+        speechRecognition.stopListening();
+        console.log('Stopped Listening...');
+        SPcaption = transcript;
+        resetTranscript();
+      }
+    }
+    //#endregion
+
+    //#region - Run the SL model
+    
     // Setup Video Element
     if (!model || !isVideoReady) return;
 
     const videoElement = document.querySelector(`video[data-user-id="${user?.id}"]`) as HTMLVideoElement;
-    console.log('Video element found:', videoElement);
 
     if (!videoElement) {
       console.error('No video element found');
-      return; // Exit early
+      return;
     }
 
     const detectGesture = async (videoElement: HTMLVideoElement) => {
+      // Check if the video element has valid dimensions before processing
+      if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+        console.error('Video element has invalid dimensions');
+        return;
+      }
+    
+      // Capture a frame from the video element
       const videoFrame = tf.browser.fromPixels(videoElement);
-      console.log('Video frame shape:', videoFrame.shape);
-
+    
+      // Validate the frame shape
       if (!videoFrame || videoFrame.shape.length !== 3) {
         console.error('Invalid video frame');
         return;
       }
-
-      // Preprocess the frame
+    
+      // Preprocess the frame: resize and normalize
       const processedFrame = tf.tidy(() => {
-        const resized = tf.image.resizeBilinear(videoFrame, [32, 32]);
-        const normalized = resized.div(255.0);
-        return normalized.expandDims(0);
+        const resized = tf.image.resizeBilinear(videoFrame, [32, 32]); // Resize to 32x32
+        const normalized = resized.div(255.0); // Normalize to range [0, 1]
+        return normalized.expandDims(0); // Add batch dimension
       });
-
-      // Run inference
+    
+      // Run inference to get predictions
       const predictions = model.predict(processedFrame) as tf.Tensor;
       const result = await predictions.argMax(1).data();
-      console.log('Predictions:', result);
-
-      // Process the result
+    
+      // Extract the detected letter based on the prediction index
       const detectedIndex = result[0];
       const detectedLetter = letterMapping[detectedIndex];
-      setDetectedLetter(detectedLetter);
-
-      console.log(`Detected letter: ${detectedLetter}`);
-
-      console.log(`Detected letter: ${detectedLetter}`);
-
-      // Clean up
+    
+      // Update the sign language caption
+      if (SLcaption.length > 10) {
+        sendMessage();
+        SLcaption = ''; 
+      }
+    
+      SLcaption += detectedLetter;
+    
+      // Clean up TensorFlow memory
       tf.dispose([videoFrame, processedFrame, predictions]);
     };
+    
 
     // Call the detectGesture function every 100ms
     const intervalId = setInterval(() => {
@@ -258,8 +301,13 @@ const MeetingRoom = () => {
     return () => {
       clearInterval(intervalId);
     }
-  }, [model, isVideoReady]);
+    
+    //#endregion
 
+  },[model, isVideoReady]);
+  //#endregion
+
+  //#region - Call Layout & Loader
   if(callingState !== CallingState.JOINED) return <Loader/>
 
   const CallLayout = () => {
