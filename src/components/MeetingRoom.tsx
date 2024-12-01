@@ -44,7 +44,6 @@ const MeetingRoom = () => {
     10: 'K', 11: 'L', 12: 'M', 13: 'N', 14: 'O', 15: 'P', 16: 'Q', 17: 'R', 18: 'S', 19: 'T',
     20: 'U', 21: 'V', 22: 'W', 23: 'X', 24: 'Y', 25: 'Z', 26: 'nothing'
   };
-  var SLcaption = '';
   var SPcaption = '';
   var useSignLanguage = false;
 
@@ -174,18 +173,19 @@ const MeetingRoom = () => {
     if(!connected){
       ws.onopen = function() {
         connected = true;
+        console.log(`Connected to server`);
         ws.send(JSON.stringify({ type: 'join', room: roomId, user: user?.id }));
       };
       
       ws.onmessage = function(event: MessageEvent) {
         
         const data = JSON.parse(event.data);
-        /*if(data.sl){
+        if(data.sl){
           console.log('Received Sign Language Message:', event.data);
         }
         else{
           console.log('Received Speech Message:', event.data);
-        }*/
+        }
 
         switch(data.input){
           case 'message':
@@ -207,7 +207,7 @@ const MeetingRoom = () => {
     
     }
     
-    function sendMessage(){      
+    function sendMessage(SLcaption: String){      
       if(useSignLanguage){
         console.log('Sending SL caption to server:', SLcaption);
         ws.send(JSON.stringify({ type: 'message', sl: true, message: SLcaption, user: user?.id }));
@@ -248,6 +248,8 @@ const MeetingRoom = () => {
       return;
     }
 
+    var SLcaption = '';
+
     const detectGesture = async (videoElement: HTMLVideoElement) => {
       // Check if the video element has valid dimensions before processing
       if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
@@ -278,10 +280,10 @@ const MeetingRoom = () => {
       // Extract the detected letter based on the prediction index
       const detectedIndex = result[0];
       const detectedLetter = letterMapping[detectedIndex];
-    
+      
       // Update the sign language caption
       if (SLcaption.length > 10) {
-        sendMessage();
+        sendMessage(SLcaption);
         SLcaption = ''; 
       }
     
