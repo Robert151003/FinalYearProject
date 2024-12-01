@@ -286,6 +286,7 @@ const MeetingRoom = () => {
       }
     
       SLcaption += detectedLetter;
+      console.log('Detected Letter:', detectedLetter);
     
       // Clean up TensorFlow memory
       tf.dispose([videoFrame, processedFrame, predictions]);
