@@ -45,7 +45,7 @@ const MeetingRoom = () => {
     20: 'U', 21: 'V', 22: 'W', 23: 'X', 24: 'Y', 25: 'Z', 26: 'nothing'
   };
   var SPcaption = '';
-  var useSignLanguage = false;
+  var useSignLanguage = true;
 
   const { transcript, resetTranscript } = useSpeechRecognition()
 
@@ -173,19 +173,18 @@ const MeetingRoom = () => {
     if(!connected){
       ws.onopen = function() {
         connected = true;
-        console.log(`Connected to server`);
         ws.send(JSON.stringify({ type: 'join', room: roomId, user: user?.id }));
       };
       
       ws.onmessage = function(event: MessageEvent) {
         
         const data = JSON.parse(event.data);
-        if(data.sl){
+        /*if(data.sl){
           console.log('Received Sign Language Message:', event.data);
         }
         else{
           console.log('Received Speech Message:', event.data);
-        }
+        }*/
 
         switch(data.input){
           case 'message':
@@ -288,8 +287,6 @@ const MeetingRoom = () => {
       }
     
       SLcaption += detectedLetter;
-      console.log('Detected Letter:', detectedLetter);
-      console.log('Detected Caption:', SLcaption);
     
       // Clean up TensorFlow memory
       tf.dispose([videoFrame, processedFrame, predictions]);
