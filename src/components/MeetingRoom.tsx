@@ -1,7 +1,6 @@
 import { cn } from '@/lib/utils';
 import {  CallControls, CallingState, CallParticipantsList, CallStatsButton, PaginatedGridLayout, SpeakerLayout, useCall, useCallStateHooks } from '@stream-io/video-react-sdk';
-import React, { useEffect, useState } from 'react'
-import speechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+import React, { useEffect, useRef, useState } from 'react'
 
 import {
   DropdownMenu,
@@ -15,6 +14,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import EndCallButton from './EndCallButton';
 import { useUser } from '@clerk/nextjs';
 import * as tf from '@tensorflow/tfjs';
+
+interface SpeechToTextOptions {
+  interimResults?: boolean;
+  lang?: string;
+  continuous?: boolean;
+}
 
 
 type CallLayoutType = 'grid' | 'speaker-left' | 'speaker-right';
@@ -44,14 +49,114 @@ const MeetingRoom = () => {
     10: 'K', 11: 'L', 12: 'M', 13: 'N', 14: 'O', 15: 'P', 16: 'Q', 17: 'R', 18: 'S', 19: 'T',
     20: 'U', 21: 'V', 22: 'W', 23: 'X', 24: 'Y', 25: 'Z', 26: 'nothing'
   };
-  var SPcaption = '';
-  var useSignLanguage = true;
 
-  const { transcript, resetTranscript } = useSpeechRecognition()
+  var useSignLanguage = false;
 
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const options: SpeechToTextOptions = {
+    interimResults: true, // or false, depending on your requirement
+    lang: 'en-US', // specify the language code
+    continuous: false // or false, depending on your requirement
+  };
+
+
+  //#endregion
+
+  //#region - Websockets
+  var connected = false;
+  const address = 'wss://ws-server-fyp.glitch.me';
+  const ws = new WebSocket(address);
+  if(!connected){
+    ws.onopen = function() {
+      connected = true;
+      ws.send(JSON.stringify({ type: 'join', room: roomId, user: user?.id }));
+    };
+    
+    ws.onmessage = function(event: MessageEvent) {
+      
+      const data = JSON.parse(event.data);
+      /*if(data.sl){
+        console.log('Received Sign Language Message:', event.data);
+      }
+      else{
+        console.log('Received Speech Message:', event.data);
+      }*/
+
+      switch(data.input){
+        case 'message':
+          setCaption(data.user, data.message);
+          break;
+        case 'join':
+          break;
+      }
+    };
+    
+    ws.onerror = function(error: Event) {
+      console.error('WebSocket error:', error);
+    };
+    
+    ws.onclose = function(event: CloseEvent) {
+      console.log('WebSocket is closed now.');
+      connected = false;
+    };
   
+  }
+  
+  function sendMessage(SLcaption: String) {
+    if (useSignLanguage) {
+        console.log('Sending SL caption to server:', SLcaption);
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'message', sl: true, message: SLcaption, user: user?.id }));
+        } else {
+            console.error('WebSocket is not open. Current state:', ws.readyState);
+        }
+    } else {
+        console.log('Sending Speech caption to server:', SLcaption);
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'message', sl: false, message: SLcaption, user: user?.id }));
+        } else {
+            console.error('WebSocket is not open. Current state:', ws.readyState);
+        }
+    }
+  }
   
 
+  //#endregion
+
+  //#region - Set Caption
+  function setCaption(userId: string, caption: string) {
+    const vidElement = document.querySelector(`video[data-user-id="${userId}"]`) as HTMLVideoElement;
+    if (!vidElement) {
+      console.error(`Video element for user ${userId} not found.`);
+      return;
+    }
+    // Check if a caption box already exists
+    let captionBox = document.getElementById(`caption-${userId}`) as HTMLDivElement | null;
+    if (!captionBox) {
+      captionBox = document.createElement('div');
+      captionBox.id = `caption-${userId}`; // Set the unique id for the caption box
+      captionBox.classList.add(
+        'caption-box',
+        'absolute',
+        'bottom-2',
+        'left-1/2',
+        'transform',
+        '-translate-x-1/2',
+        'bg-black',
+        'bg-opacity-70',
+        'text-white',
+        'text-sm',
+        'px-3',
+        'py-1',
+        'rounded'
+      );
+      vidElement.parentElement?.appendChild(captionBox);
+    }
+
+    // Update the text content of the caption box
+    captionBox.textContent = caption;
+  }
   //#endregion
 
   //#region - Load Model
@@ -103,8 +208,6 @@ const MeetingRoom = () => {
   }, []);
   //#endregion
 
-  //#region - Websockets, Captions & AI Model
-
   //#region - Captions 
   useEffect(() => {
     let previousParticipants = call?.state.participants;
@@ -127,116 +230,93 @@ const MeetingRoom = () => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [call]); 
+  }, [call?.state.participants]);
+  //#endregion
 
+  //#region - Run Speech Recognition Model
   useEffect(() => {
-    
-
-    function setCaption(userId: string, caption: string) {
-      const vidElement = document.querySelector(`video[data-user-id="${userId}"]`) as HTMLVideoElement;
-      if (!vidElement) {
-        console.error(`Video element for user ${userId} not found.`);
+    if (!useSignLanguage) {
+      if (!('webkitSpeechRecognition' in window)) {
+        console.error("Web Speech API is not supported on this browser");
         return;
       }
-      // Check if a caption box already exists
-      let captionBox = document.getElementById(`caption-${userId}`) as HTMLDivElement | null;
-      if (!captionBox) {
-        captionBox = document.createElement('div');
-        captionBox.id = `caption-${userId}`; // Set the unique id for the caption box
-        captionBox.classList.add(
-          'caption-box',
-          'absolute',
-          'bottom-2',
-          'left-1/2',
-          'transform',
-          '-translate-x-1/2',
-          'bg-black',
-          'bg-opacity-70',
-          'text-white',
-          'text-sm',
-          'px-3',
-          'py-1',
-          'rounded'
-        );
-        vidElement.parentElement?.appendChild(captionBox);
+  
+      // Create a new instance of SpeechRecognition
+      const recognition = new window.webkitSpeechRecognition();
+      recognitionRef.current = recognition; 
+      recognition.interimResults = options.interimResults || true;
+      recognition.lang = options.lang || 'en-US';
+      recognition.continuous = options.continuous || true;
+      console.log(`SR - Recognition Loaded`);
+  
+      if ("webkitSpeechGrammarList" in window) {
+        const grammar = "#JSGF V1.0; grammar punctuation; public <punc> = . | , | ! | ? | ; | : | - | ( | ) | [ | ] | { | } | \" | ' | / | \\ | _ | @ | # | $ | % | ^ | & | * | + | = | < | > | | | ` | ~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;";
+        const speechRecognitionList = new window.webkitSpeechGrammarList();
+        speechRecognitionList.addFromString(grammar, 1);
+        recognition.grammars = speechRecognitionList;
       }
-
-      // Update the text content of the caption box
-      captionBox.textContent = caption;
-    }
-    //#endregion
-
-    //#region - Websockets
-    var connected = false;
-    const address = 'wss://ws-server-fyp.glitch.me';
-    const ws = new WebSocket(address);
-    if(!connected){
-      ws.onopen = function() {
-        connected = true;
-        ws.send(JSON.stringify({ type: 'join', room: roomId, user: user?.id }));
-      };
       
-      ws.onmessage = function(event: MessageEvent) {
+      // Start recognition
+      if (!isListening) {
+        recognition.start();
+        setIsListening(true);
+        console.log(`SR - Recognition Started`);
+      }
+      
+      // Listen for speech and send captions
+      let text = "";
+      recognition.onresult = (event) => {
         
-        const data = JSON.parse(event.data);
-        /*if(data.sl){
-          console.log('Received Sign Language Message:', event.data);
-        }
-        else{
-          console.log('Received Speech Message:', event.data);
-        }*/
-
-        switch(data.input){
-          case 'message':
-            setCaption(data.user, data.message);
-            break;
-          case 'join':
-            break;
+        text += event.results[event.results.length - 1][0].transcript;
+        
+        console.log(`SR - Text: ${text}`);
+  
+        // Send the message with the current text
+        if (text.length > 10) {
+          sendMessage(text); // Use the text variable directly
+          text = '';
         }
       };
-      
-      ws.onerror = function(error: Event) {
-        console.error('WebSocket error:', error);
+
+      // Older Model - Go back to if not working properly
+      /*recognition.onresult = (event) => {
+        let text = "";
+        for (let i = 0; i < event.results.length; i++) {
+          text += event.results[i][0].transcript;
+        }
+        setTranscript(text);
+        console.log(`SR - Transcript: ${transcript}`);
+        
+        console.log(`SR - Text: ${text}`);
+  
+        // Send the message with the current text
+        if (text.length > 10) {
+          sendMessage(text); // Use the text variable directly
+          text = '';
+        }
+      };*/
+  
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
       };
-      
-      ws.onclose = function(event: CloseEvent) {
-        console.log('WebSocket is closed now.');
-        connected = false;
+  
+      recognition.onend = () => {
+        console.log(`SR - Recognition Ended`);
+        setIsListening(false);
       };
-    
+  
+      return () => {
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+          console.log(`SR - Recognition Stopped`);
+        }
+      };
     }
-    
-    function sendMessage(SLcaption: String){      
-      if(useSignLanguage){
-        console.log('Sending SL caption to server:', SLcaption);
-        ws.send(JSON.stringify({ type: 'message', sl: true, message: SLcaption, user: user?.id }));
-      }  
-      else{
-        console.log('Sending Speech caption to server:', SPcaption);
-        ws.send(JSON.stringify({ type: 'message', sl: false, message: SPcaption, user: user?.id }));
-      }
-    }
-    
+  }, [useSignLanguage]);
+  //#endregion
 
-    //#endregion
-
-    //#region - Run Speech Recognition Model
-    if(!useSignLanguage){
-      if(transcript.length < 10){
-        speechRecognition.startListening();
-        console.log('Listening...');
-      }
-      else{
-        speechRecognition.stopListening();
-        console.log('Stopped Listening...');
-        SPcaption = transcript;
-        resetTranscript();
-      }
-    }
-    //#endregion
-
-    //#region - Run the SL model
-    
+  //#region - Run the SL model
+  useEffect(() => {
     // Setup Video Element
     if (!model || !isVideoReady) return;
 
@@ -250,6 +330,7 @@ const MeetingRoom = () => {
     var SLcaption = '';
 
     const detectGesture = async (videoElement: HTMLVideoElement) => {
+      if(!useSignLanguage) return;
       // Check if the video element has valid dimensions before processing
       if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
         console.error('Video element has invalid dimensions');
@@ -302,12 +383,9 @@ const MeetingRoom = () => {
     return () => {
       clearInterval(intervalId);
     }
-    
-    //#endregion
-
   },[model, isVideoReady]);
   //#endregion
-
+  
   //#region - Call Layout & Loader
   if(callingState !== CallingState.JOINED) return <Loader/>
 

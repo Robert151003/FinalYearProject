@@ -38,17 +38,15 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
   //#region - Model Loader
   useEffect(() => {
     const loadModel = async () => {
-      console.log("model loading");
       try {
         // Load the model
         const model = await tf.loadLayersModel('/modelFiles/asl-gesture-model.json');
-        console.log("model loaded");
+        /*console.log("model loaded");
         console.log(model.inputs);  
-        console.log(model.summary());  
+        console.log(model.summary());*/
 
         // Find input layers
         if (!model.inputs.length) {
-          console.log("No input layers found, creating a new model.");
           const input = tf.input({shape: [224, 224, 3]});
           const flatten = tf.layers.flatten().apply(input);
           const dense1 = tf.layers.dense({units: 128, activation: 'relu'}).apply(flatten);
@@ -89,14 +87,12 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
     if (!model || !isVideoReady) return;
 
     const videoElement = document.querySelector('video');
-    console.log('Video element found:', videoElement);
 
     if (!videoElement) {console.error('No video element found'); return;} // Exit early
     
     // Begin running the model
     const detectGesture = async (videoElement: HTMLVideoElement) => {
       const videoFrame = tf.browser.fromPixels(videoElement);
-      console.log('Video frame shape:', videoFrame.shape);
 
       if (!videoFrame || videoFrame.shape.length !== 3) {console.error('Invalid video frame'); return;}
 
@@ -110,14 +106,12 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
       // Run inference
       const predictions = model.predict(processedFrame) as tf.Tensor;
       const result = await predictions.argMax(1).data();
-      console.log('Predictions:', result);
 
       // Process the result
       const detectedIndex = result[0];
       const detectedLetter = letterMapping[detectedIndex];
       setDetectedLetter(detectedLetter);
 
-      console.log(`Detected letter: ${detectedLetter}`);
 
       // Clean up
       tf.dispose([videoFrame, processedFrame, predictions]);
