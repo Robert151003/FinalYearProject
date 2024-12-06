@@ -15,6 +15,14 @@ import EndCallButton from './EndCallButton';
 import { useUser } from '@clerk/nextjs';
 import * as tf from '@tensorflow/tfjs';
 
+import { styled } from '@mui/material/styles';
+import FormGroup from '@mui/material/FormGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch, { SwitchProps } from '@mui/material/Switch';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
+
 interface SpeechToTextOptions {
   interimResults?: boolean;
   lang?: string;
@@ -50,7 +58,9 @@ const MeetingRoom = () => {
     20: 'U', 21: 'V', 22: 'W', 23: 'X', 24: 'Y', 25: 'Z', 26: 'nothing'
   };
 
-  var useSignLanguage = false;
+  const [useSignLanguage, setUseSignLanguage] = React.useState(false);
+  const [checked, setChecked] = React.useState(false);
+
 
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -62,6 +72,12 @@ const MeetingRoom = () => {
 
 
   //#endregion
+
+  function signLangaugeTurnOn(event: React.ChangeEvent<HTMLInputElement>){
+    setUseSignLanguage(event.target.checked);
+    console.log(`Sign Language use in state: ${useSignLanguage}`);
+    setChecked(event.target.checked);
+  }
 
   //#region - Websockets
   var connected = false;
@@ -414,9 +430,20 @@ const MeetingRoom = () => {
           <CallParticipantsList onClose={() => setShowParticipants(false)}/>
         </div>
       </div>
-
+      
       <div className='fixed bottom-0 flex w-full items-center justify-center gap-5 flex-wrap'>
         <CallControls onLeave={() => router.push('/')}/>
+        
+        <div className="flex items-center justify-center w-15 h-9 rounded-full bg-[#19232D] hover:bg-[#4C535B] transition">
+          <Tooltip title="Toggle Sign Language" arrow>
+            <Switch
+              checked={checked}
+              onChange={signLangaugeTurnOn}
+              inputProps={{ 'aria-label': 'controlled' }}
+              className="scale-75"
+            />
+          </Tooltip>
+        </div>
 
         <DropdownMenu>
           <div className='flex items-center'>
