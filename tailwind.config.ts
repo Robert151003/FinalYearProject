@@ -24,9 +24,14 @@ const config = {
           2: '#161925',
           3: '#252A41',
           4: '#1E2757',
+          5: '#414141', // Charcoal Grey
+          6: '#333333', // Darker Charcoal Grey
         },
         blue: {
           1: '#0E78F9',
+          2: '#181b26', // Dark Steel Blue
+          3: '#7DF9FF', // Electric Blue
+          4: '#00FFFF', // Cyan
         },
         sky: {
           1: '#C9DDFF',
@@ -38,9 +43,17 @@ const config = {
         },
         purple: {
           1: '#830EF9',
+          2: '#FF00FF', // Magenta
         },
         yellow: {
           1: '#F9A90E',
+          2: '#FFD700', // Gold
+        },
+        red: {
+          1: '#f54029',
+        },
+        pink: {
+          1: '#e75480',
         },
       },
       keyframes: {

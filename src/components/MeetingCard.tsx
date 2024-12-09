@@ -2,6 +2,11 @@
 
 import Image from "next/image";
 
+import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
+import { useToast } from "./ui/use-toast";
+import { avatarImages } from "../../constants";
+
 interface MeetingCardProps {
   title: string;
   date: string;
@@ -17,10 +22,16 @@ const MeetingCard = ({
   icon,
   title,
   date,
+  isPreviousMeeting,
+  buttonIcon1,
+  handleClick,
+  link,
+  buttonText,
 }: MeetingCardProps) => {
+  const { toast } = useToast();
 
   return (
-    <section className="flex min-h-[200px] w-full flex-col justify-between rounded-[14px] bg-dark-1 px-5 py-8 xl:max-w-[568px]">
+    <section className="flex min-h-[258px] w-full flex-col justify-between rounded-[14px] bg-dark-6 px-5 py-8 xl:max-w-[568px]">
       <article className="flex flex-col gap-5">
         <Image src={icon} alt="upcoming" width={28} height={28} />
         <div className="flex justify-between">
@@ -29,6 +40,35 @@ const MeetingCard = ({
             <p className="text-base font-normal">{date}</p>
           </div>
         </div>
+      </article>
+      <article className={cn("flex justify-center relative", {})}>
+        {!isPreviousMeeting && (
+          <div className="flex gap-2">
+            <Button onClick={handleClick} className="rounded bg-blue-1 px-6">
+              {buttonIcon1 && (
+                <Image src={buttonIcon1} alt="feature" width={20} height={20} />
+              )}
+              &nbsp; {buttonText}
+            </Button>
+            <Button
+              onClick={() => {
+                navigator.clipboard.writeText(link);
+                toast({
+                  title: "Link Copied",
+                });
+              }}
+              className="bg-dark-3 px-6"
+            >
+              <Image
+                src="/icons/copy.svg"
+                alt="feature"
+                width={20}
+                height={20}
+              />
+              &nbsp; Copy Link
+            </Button>
+          </div>
+        )}
       </article>
     </section>
   );

@@ -5,8 +5,8 @@ import { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
 
 export const metadata: Metadata = {
-  title: "Yoom",
-  description: "Video Calling App",
+  title: "Unify",
+  description: "Video Conferencing App",
   icons:{
     icon: '/icons/logo.svg'
   },

@@ -15,8 +15,8 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Yoom",
-  description: "Video Calling App",
+  title: "Unify",
+  description: "Video Conferencing App",
   icons:{
     icon: '/icons/logo.svg'
   },
@@ -32,19 +32,19 @@ export default function RootLayout({
       <ClerkProvider
       appearance={{
         layout:{
-          logoImageUrl:'/icons/yoom-logo.svg',
+          logoImageUrl:'/icons/unify-logo.png',
           socialButtonsVariant:'iconButton'
         },
         variables:{
           colorText: '#FFF',
           colorPrimary:'#0E78F9',
-          colorBackground:'#1C1F2E',
-          colorInputBackground:'#252A41',
+          colorBackground:'#333333',
+          colorInputBackground:'#414141',
           colorInputText:'#FFF'
         }
       }}
       >
-        <body className={`${inter.className} bg-dark-2`}>
+        <body className={`${inter.className} bg-dark-5`}>
           {children}
           <Toaster />
           <SpeedInsights />
