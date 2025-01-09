@@ -399,7 +399,7 @@ const MeetingRoom = () => {
     return () => {
       clearInterval(intervalId);
     }
-  },[model, isVideoReady]);
+  },[useSignLanguage, model, isVideoReady]);
   //#endregion
   
   //#region - Call Layout & Loader
