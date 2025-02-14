@@ -189,7 +189,7 @@ const MeetingRoom = () => {
         // Find input layers
         if (!model.inputs.length) {
           console.log("No input layers found, creating a new model.");
-          const input = tf.input({shape: [224, 224, 3]});
+          const input = tf.input({shape: [64, 64, 3]});
           const flatten = tf.layers.flatten().apply(input);
           const dense1 = tf.layers.dense({units: 128, activation: 'relu'}).apply(flatten);
           const output = tf.layers.dense({units: 26, activation: 'softmax'}).apply(dense1) as tf.SymbolicTensor;
@@ -364,7 +364,7 @@ const MeetingRoom = () => {
     
       // Preprocess the frame: resize and normalize
       const processedFrame = tf.tidy(() => {
-        const resized = tf.image.resizeBilinear(videoFrame, [32, 32]); // Resize to 32x32
+        const resized = tf.image.resizeBilinear(videoFrame, [64, 64]);
         const normalized = resized.div(255.0); // Normalize to range [0, 1]
         return normalized.expandDims(0); // Add batch dimension
       });
