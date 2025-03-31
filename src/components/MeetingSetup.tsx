@@ -145,7 +145,6 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
         </label>
         <DeviceSettings />
       </div>
-      <p>Detected letter: {detectedLetter}</p>
       <Button className='rounded-md bg-green-500 px-4 py-2.5' onClick={() => {
         call.join();
         setIsSetupComplete(true);

@@ -84,13 +84,13 @@ const CallList = ({type}: {type: 'ended' | 'upcoming' | 'recordings'}) => {
                         buttonText={type === 'recordings' ? 'Play' : 'Start'}
                         handleClick={
                             type === 'recordings'
-                            ? () => router.push(`${meeting.url}`)
-                            : () => router.push(`/meeting/${meeting.id}`)
-                        }
+                            ? () => window.open(meeting.url, "_blank", "noopener,noreferrer")
+                            : () => window.open(`/meeting/${meeting.id}`, "_blank", "noopener,noreferrer")
+                        }                       
                         link={
                             type === 'recordings'
                             ? meeting.url
-                            : `${process.env.NEXT_PUBLIC_BASE_URL}/meeting/${meeting.id}`
+                            : `${process.env.NEXT_PUBLIC_BASE_URL}/meeting/${meeting.id}`                            
                         }
                     />
                 ))
