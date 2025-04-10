@@ -37,7 +37,7 @@ const MeetingRoom = () => {
   //#region  - Variable Definition
 
   const searchParams = useSearchParams();
-  const isPersonalRoom = !!searchParams.get('personal');
+  const isPersonalRoom = searchParams ? !!searchParams.get('personal') : false;
 
   const [layout, setLayout] = useState<CallLayoutType>('speaker-left');
   const [showParticipants, setShowParticipants] = useState(false);
