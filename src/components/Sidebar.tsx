@@ -15,7 +15,7 @@ const Sidebar = () => {
             
             {/* Uses side bar links in constants/index.ts */}
             {sidebarLinks.map((link) => {
-                const isActive = pathName === link.route || pathName.startsWith(`${link.route}/`);
+                const isActive = pathName === link.route || pathName?.startsWith(`${link.route}/`);
 
                 return (
                     <Link 
