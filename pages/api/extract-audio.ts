@@ -9,6 +9,7 @@ import ffmpegPath from "ffmpeg-static";
 export const config = {
   api: {
     bodyParser: false,
+    sizeLimit: "50mb",  // Increase the size limit to 50MB
   },
 };
 
