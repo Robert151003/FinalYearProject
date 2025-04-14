@@ -25,9 +25,9 @@ export const sidebarLinks = [
         imgUrl: '/icons/add-personal.svg', 
     },
     {
-        label: 'MMG',
+        label: 'Summariser',
         route: '/mmg',
-        imgUrl: '/icons/add-personal.svg', 
+        imgUrl: '/icons/pen.png', 
     }
       
 ]
