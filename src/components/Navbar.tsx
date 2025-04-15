@@ -31,13 +31,7 @@ const Navbar = () => {
           <UserButton />
         </SignedIn>
 
-        <MobileNav/>
-        
-        
-        {/*<ModeToggle />
-        Add multiple colours - defaults and non defaults - in tailwind config
-        */}
-        
+        <MobileNav/>       
       </div>
       
     </nav>

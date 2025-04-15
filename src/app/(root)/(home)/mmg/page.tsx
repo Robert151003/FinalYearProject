@@ -3,8 +3,6 @@
 import React from 'react'
 import LanguageModel from '@/components/LanguageModel'
 
-
-
 const MMG = () => {
 
   return (

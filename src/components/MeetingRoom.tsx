@@ -15,12 +15,7 @@ import EndCallButton from './EndCallButton';
 import { useUser } from '@clerk/nextjs';
 import * as tf from '@tensorflow/tfjs';
 
-import { styled } from '@mui/material/styles';
-import FormGroup from '@mui/material/FormGroup';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch, { SwitchProps } from '@mui/material/Switch';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 
 interface SpeechToTextOptions {
@@ -65,9 +60,9 @@ const MeetingRoom = () => {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const options: SpeechToTextOptions = {
-    interimResults: true, // or false, depending on your requirement
-    lang: 'en-US', // specify the language code
-    continuous: false // or false, depending on your requirement
+    interimResults: true,
+    lang: 'en-US',
+    continuous: false
   };
 
 
@@ -92,12 +87,6 @@ const MeetingRoom = () => {
     ws.onmessage = function(event: MessageEvent) {
       
       const data = JSON.parse(event.data);
-      /*if(data.sl){
-        console.log('Received Sign Language Message:', event.data);
-      }
-      else{
-        console.log('Received Speech Message:', event.data);
-      }*/
 
       switch(data.input){
         case 'message':

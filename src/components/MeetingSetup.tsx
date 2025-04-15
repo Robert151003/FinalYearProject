@@ -41,9 +41,6 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
       try {
         // Load the model
         const model = await tf.loadLayersModel('/modelFiles/asl-gesture-model.json');
-        /*console.log("model loaded");
-        console.log(model.inputs);  
-        console.log(model.summary());*/
 
         // Find input layers
         if (!model.inputs.length) {
