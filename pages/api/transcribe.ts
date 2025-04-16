@@ -1,6 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import fs from "fs";
-import path from "path";
 import { createClient } from "@deepgram/sdk";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,29 +12,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!audio || typeof audio !== "string") {
     console.log("[TRANSCRIBE] Invalid or missing 'audio' value:", audio);
-    return res.status(400).json({ error: "No audio path provided" });
+    return res.status(400).json({ error: "No audio URL provided" });
   }
 
-  const cleanAudio = audio.startsWith("/") ? audio.slice(1) : audio;
-  const audioFilePath = path.join(process.cwd(), "public", cleanAudio);
-
-  console.log("[TRANSCRIBE] Resolved path:", audioFilePath);
-
-  // Does file exist?
-  const exists = fs.existsSync(audioFilePath);
-  console.log("[TRANSCRIBE] File exists:", exists);
-
-  if (!exists) {
-    return res.status(404).json({ error: "Audio file not found" });
-  }
-
+  // Initialize Deepgram client
   console.log("Initializing Deepgram...");
   const deepgram = createClient(process.env.DEEPGRAM_API_KEY);
 
   try {
-    const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
-      // path to the audio file
-      fs.readFileSync(audioFilePath),
+    // Pass the audio URL as part of an object, as expected by transcribeUrl
+    const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
+      { url: audio }, // Wrap the audio URL in an object with 'url' key
       {
         model: "nova-3",
         smart_format: true,

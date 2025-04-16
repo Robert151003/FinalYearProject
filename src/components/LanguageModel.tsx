@@ -18,151 +18,132 @@ const MeetingMinutesGenerator: React.FC = () => {
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (!event.target.files) return;
         const file = event.target.files[0];
-
-        // Check if the uploaded file is a video file
+    
         const fileType = file.type;
         if (!fileType.startsWith("video/")) {
             setAlertMessage("Please upload a valid video file.");
-            return; // Stop processing if the file is not a video
+            return;
         }
-
-        // Reset any previous alert message
+    
         setAlertMessage(null);
     
-        // Start the process once the file is uploaded
-        setStatus("Processing audio...");
-        setProgress(10);  // Set initial progress
-        console.log("Step 1: Starting audio extraction");
+        setStatus("Uploading video to Cloud...");
+        setProgress(5);
+        console.log("Step 0: Uploading video");
+    
+        // Upload to /api/upload-video (our custom Cloudinary backend route)
+        const uploadForm = new FormData();
+        uploadForm.append("file", file);
+    
+        const cloudUploadRes = await fetch("/api/upload-video", {
+            method: "POST",
+            body: uploadForm,
+        });
+    
+        const cloudUploadData = await cloudUploadRes.json();
+        const videoUrl = cloudUploadData.secure_url;
+    
+        if (!videoUrl) {
+            setAlertMessage("Video upload failed.");
+            return;
+        }
+    
+        console.log("Uploaded video URL:", videoUrl);
     
         // Step 1: Convert Video to Audio
-        const formData = new FormData();
-        formData.append("file", file);
+        setStatus("Processing audio...");
+        setProgress(10);
+        console.log("Step 1: Starting audio extraction");
     
         const audioResponse = await fetch("/api/extract-audio", {
             method: "POST",
-            body: formData,
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ videoUrl }),
         });
-        const audioFile = await audioResponse.json();
     
+        const audioFile = await audioResponse.json();
         console.log(`Extracted Audio: ${audioFile.audio}`);
         console.log(`Extracted Video: ${audioFile.videoFileName}`);
     
         setStatus("Transcribing audio...");
-        setProgress(40);  // Update progress for audio extraction completion
+        setProgress(40);
         console.log("Step 2: Transcribing audio");
-        // Step 2: Transcribe Audio using Deepgram API
-
+    
         const transcriptResponse = await fetch("/api/transcribe", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
+                "Content-Type": "application/json",
             },
             body: JSON.stringify({ audio: audioFile.audio }),
-          });
-          
-        const data = await transcriptResponse.json(); // Only read the body once
+        });
+    
+        const data = await transcriptResponse.json();
         console.log("Response from /api/transcribe:", data);
-          
+    
         if (data.transcript) {
-            setTranscription(data.transcript); // Set the transcription text
+            setTranscription(data.transcript);
             console.log(`Transcription: ${data.transcript}`);
         } else {
             console.error("Transcription not found in the response");
         }
     
         setStatus("Summarizing...");
-        setProgress(70);  // Update progress for transcription completion
+        setProgress(70);
         console.log("Step 3: Summarizing transcript");
     
-        // Step 3: Summarize Using Groq AI
         const summaryResponse = await getGroqChatCompletion(data.transcript);
         setSummary(summaryResponse);
     
         setStatus("Processing complete.");
-        setProgress(100);  // Final progress
+        setProgress(100);
         console.log("Step 4: Process complete");
-
-        // Create DOCX for Transcription
+    
+        // DOCX generation
         const transcriptionDoc = new Document({
-            sections: [
-                {
-                    properties: {},
-                    children: [
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: data.transcript,
-                                    bold: true,
-                                }),
-                            ],
-                        }),
-                    ],
-                },
-            ],
+            sections: [{
+                properties: {},
+                children: [new Paragraph({ children: [new TextRun({ text: data.transcript, bold: true })] })],
+            }],
         });
-
-        // Create DOCX for Summary
+    
         const summaryDoc = new Document({
-            sections: [
-                {
-                    properties: {},
-                    children: [
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: summaryResponse,
-                                    bold: true,
-                                }),
-                            ],
-                        }),
-                    ],
-                },
-            ],
+            sections: [{
+                properties: {},
+                children: [new Paragraph({ children: [new TextRun({ text: summaryResponse, bold: true })] })],
+            }],
         });
-
-        // Save both documents
+    
         const transcriptionBuffer = await Packer.toBuffer(transcriptionDoc);
         const summaryBuffer = await Packer.toBuffer(summaryDoc);
-
-        // Create a download link for the transcription DOCX
+    
         const transcriptionBlob = new Blob([transcriptionBuffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-        const transcriptionLink = URL.createObjectURL(transcriptionBlob);
-
-        // Create a download link for the summary DOCX
         const summaryBlob = new Blob([summaryBuffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    
+        const transcriptionLink = URL.createObjectURL(transcriptionBlob);
         const summaryLink = URL.createObjectURL(summaryBlob);
-
-        // Create the download links JSX
-        const downloadLinks = (
+    
+        setDownloadLinks(
             <div className="flex space-x-4 pt-6">
-                <a
-                    href={transcriptionLink}
-                    download="transcription.docx"
-                    className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-                >
+                <a href={transcriptionLink} download="transcription.docx" className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
                     Download Transcription
                 </a>
-                <a
-                    href={summaryLink}
-                    download="summary.docx"
-                    className="inline-block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-                >
+                <a href={summaryLink} download="summary.docx" className="inline-block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 transition">
                     Download Summary
                 </a>
             </div>
         );
-
-        // Update the state to display download links
-        setDownloadLinks(downloadLinks);
-
+    
         await fetch("/api/delete-audio", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
+                "Content-Type": "application/json",
             },
             body: JSON.stringify({ audio: audioFile.audio }),
-          });
+        });
     };
+    
 
     async function getGroqChatCompletion(text: string) {
         const response = await groq.chat.completions.create({
