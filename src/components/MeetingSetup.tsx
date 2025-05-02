@@ -40,7 +40,7 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
     const loadModel = async () => {
       try {
         // Load the model
-        const model = await tf.loadLayersModel('/modelFiles/asl-gesture-model.json');
+        const model = await tf.loadLayersModel('/modelFiles/model.json');
 
         // Find input layers
         if (!model.inputs.length) {

@@ -170,7 +170,7 @@ const MeetingRoom = () => {
       console.log("model loading");
       try {
         // Load the model
-        const model = await tf.loadLayersModel('/modelFiles/asl-gesture-model.json');
+        const model = await tf.loadLayersModel('/modelFiles/model.json');
         console.log("model loaded");
         console.log(model.inputs);  
         console.log(model.summary());  
