@@ -353,7 +353,7 @@ const MeetingRoom = () => {
     
       // Preprocess the frame: resize and normalize
       const processedFrame = tf.tidy(() => {
-        const resized = tf.image.resizeBilinear(videoFrame, [64, 64]);
+        const resized = tf.image.resizeBilinear(videoFrame, [224, 224]);
         const normalized = resized.div(255.0); // Normalize to range [0, 1]
         return normalized.expandDims(0); // Add batch dimension
       });

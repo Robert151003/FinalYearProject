@@ -95,7 +95,7 @@ const MeetingSetup = ({ setIsSetupComplete }: { setIsSetupComplete: (value: bool
 
       // Preprocess the frame
       const processedFrame = tf.tidy(() => {
-        const resized = tf.image.resizeBilinear(videoFrame, [64, 64]);
+        const resized = tf.image.resizeBilinear(videoFrame, [224, 224]);
         const normalized = resized.div(255.0);
         return normalized.expandDims(0);
       });
