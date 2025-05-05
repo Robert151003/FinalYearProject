@@ -355,12 +355,12 @@ const MeetingRoom = () => {
       const processedFrame = tf.tidy(() => {
         const resized = tf.image.resizeBilinear(videoFrame, [224, 224]);
         const normalized = resized.div(255.0); // Normalize to range [0, 1]
-
+        
         // Uncomment below for non fine-tuned
         // return normalized.expandDims(0); // Add batch dimension
         
-        // Uncomment below for fine-tuned
-        const flattened = normalized.reshape([1, -1]); // Flatten the input to 2D
+        // For fine-tuned model
+        const flattened = normalized.reshape([1, 1280]); // Reshape to match expected input shape
         return flattened;
       });
     
