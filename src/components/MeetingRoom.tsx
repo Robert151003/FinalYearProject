@@ -181,7 +181,7 @@ const MeetingRoom = () => {
         // Get the feature extraction layer from MobileNet
         const featureExtractor = tf.model({
           inputs: mobilenetModel.inputs,
-          outputs: mobilenetModel.getLayer('global_average_pooling2d_1').output
+          outputs: mobilenetModel.getLayer('conv_pw_13_relu').output
         });
         
         setModel(fineTunedModel);
@@ -355,16 +355,15 @@ const MeetingRoom = () => {
         const normalized = resized.div(255.0); // Normalize to range [0, 1]
         
         // Uncomment below for non fine-tuned
-        // return normalized.expandDims(0); // Add batch dimension
+        return normalized.expandDims(0); // Add batch dimension
         
-        // For fine-tuned model
+        /* For fine-tuned model
         if (!mobilenet) {
           throw new Error('MobileNet not loaded');
         }
         // Extract features using MobileNet
         const features = mobilenet.predict(normalized.expandDims(0)) as tf.Tensor;
-        // Flatten the features to 2D
-        return features.reshape([1, -1]);
+        return features;*/
       });
     
       // Run inference to get predictions
