@@ -181,7 +181,7 @@ const MeetingRoom = () => {
         // Get the feature extraction layer from MobileNet
         const featureExtractor = tf.model({
           inputs: mobilenetModel.inputs,
-          outputs: mobilenetModel.getLayer('conv_pw_13_relu').output
+          outputs: mobilenetModel.getLayer('global_average_pooling2d_1').output
         });
         
         setModel(fineTunedModel);
@@ -363,7 +363,8 @@ const MeetingRoom = () => {
         }
         // Extract features using MobileNet
         const features = mobilenet.predict(normalized.expandDims(0)) as tf.Tensor;
-        return features;
+        // Flatten the features to 2D
+        return features.reshape([1, -1]);
       });
     
       // Run inference to get predictions
