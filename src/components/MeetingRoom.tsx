@@ -47,6 +47,7 @@ const MeetingRoom = () => {
   const roomId = call?.id;
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [model, setModel] = useState<tf.LayersModel | null>(null);
+  const [mobilenet, setMobilenet] = useState<tf.LayersModel | null>(null);
   const letterMapping: { [key: number]: string } = {
     0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8: 'I', 9: 'J',
     10: 'K', 11: 'L', 12: 'M', 13: 'N', 14: 'O', 15: 'P', 16: 'Q', 17: 'R', 18: 'S', 19: 'T',
@@ -166,36 +167,33 @@ const MeetingRoom = () => {
 
   //#region - Load Model
   useEffect(() => {
-    const loadModel = async () => {
-      console.log("model loading");
+    const loadModels = async () => {
+      console.log("models loading");
       try {
-        // Load the model
-        const model = await tf.loadLayersModel('/modelFiles/model.json');
-        console.log("model loaded");
-        console.log(model.inputs);  
-        console.log(model.summary());  
-
-        // Find input layers
-        if (!model.inputs.length) {
-          console.log("No input layers found, creating a new model.");
-          const input = tf.input({shape: [64, 64, 3]});
-          const flatten = tf.layers.flatten().apply(input);
-          const dense1 = tf.layers.dense({units: 128, activation: 'relu'}).apply(flatten);
-          const output = tf.layers.dense({units: 26, activation: 'softmax'}).apply(dense1) as tf.SymbolicTensor;
-          
-          const newModel = tf.model({inputs: input, outputs: output});
-          setModel(newModel);
-        } else {
-          setModel(model);
-        }
+        // Load the fine-tuned model
+        const fineTunedModel = await tf.loadLayersModel('/modelFiles/model.json');
+        console.log("fine-tuned model loaded");
         
-        console.log('Model loaded successfully');
+        // Load MobileNet for feature extraction
+        const mobilenetModel = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
+        console.log("mobilenet loaded");
+        
+        // Get the feature extraction layer from MobileNet
+        const featureExtractor = tf.model({
+          inputs: mobilenetModel.inputs,
+          outputs: mobilenetModel.getLayer('conv_pw_13_relu').output
+        });
+        
+        setModel(fineTunedModel);
+        setMobilenet(featureExtractor);
+        
+        console.log('Models loaded successfully');
       } catch (error) {
-        console.error('Error loading custom model:', error);
+        console.error('Error loading models:', error);
       }
     };
 
-    loadModel();
+    loadModels();
   }, []);
 
   //#endregion
@@ -360,8 +358,12 @@ const MeetingRoom = () => {
         // return normalized.expandDims(0); // Add batch dimension
         
         // For fine-tuned model
-        const flattened = normalized.reshape([1, 1280]); // Reshape to match expected input shape
-        return flattened;
+        if (!mobilenet) {
+          throw new Error('MobileNet not loaded');
+        }
+        // Extract features using MobileNet
+        const features = mobilenet.predict(normalized.expandDims(0)) as tf.Tensor;
+        return features;
       });
     
       // Run inference to get predictions
